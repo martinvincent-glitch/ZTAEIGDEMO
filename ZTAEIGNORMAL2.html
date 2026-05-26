@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>ZTA E1B1 視覺連線模擬器</title>
+    <style>
+        body { font-family: sans-serif; background-color: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        
+        /* 網路架構圖區域 */
+        .network-map { position: relative; width: 600px; height: 350px; background: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 20px; padding: 20px; }
+        
+        /* 節點方塊的共用樣式 */
+        .node { position: absolute; padding: 15px; border-radius: 8px; border: 2px solid #ccc; background: #fff; text-align: center; font-weight: bold; width: 100px; transition: all 0.3s; }
+        
+        /* 節點位置 */
+        #node-subject { left: 20px; bottom: 50px; }
+        #node-pep { left: 220px; bottom: 50px; }
+        #node-pdp { left: 220px; top: 20px; }
+        #node-pip { right: 20px; top: 20px; width: 120px; }
+        #node-resource { right: 20px; bottom: 50px; }
+
+        /* 亮燈狀態：正在運作或傳遞訊息 */
+        .active { border-color: #0056b3; background-color: #e6f2ff; box-shadow: 0 0 15px rgba(0,86,179,0.5); transform: scale(1.05); }
+        /* 拒絕狀態 */
+        .denied { border-color: #dc3545; background-color: #ffe6e6; }
+        /* 成功狀態 */
+        .success { border-color: #28a745; background-color: #e6ffe6; }
+
+        /* 控制面板區域 */
+        .controls { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 600px; margin-bottom: 20px; }
+        select, button { padding: 8px; margin: 5px 0; width: 100%; font-size: 16px; }
+        button { background-color: #0056b3; color: white; border: none; cursor: pointer; font-weight: bold; border-radius: 4px; padding: 12px; }
+        button:hover { background-color: #004494; }
+        
+        /* 日誌區域 */
+        #log { background: #333; color: #0f0; padding: 15px; border-radius: 4px; font-family: monospace; height: 120px; overflow-y: auto; width: 600px; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+
+    <div class="network-map">
+        <div id="node-subject" class="node">👤 員工<br>(Subject)</div>
+        <div id="node-pep" class="node">🚪 保鑣<br>(PEP)</div>
+        <div id="node-pdp" class="node">🧠 大腦<br>(PDP)</div>
+        <div id="node-pip" class="node">🕵️‍♂️ 情報員<br>(PIPs)</div>
+        <div id="node-resource" class="node">🎯 雲端資源<br>(Resource)</div>
+    </div>
+
+    <div class="controls">
+        <label>1. 憑證 (Okta):</label>
+        <select id="val-cred"><option value="pass">✅ 正確</option><option value="fail">❌ 錯誤</option></select>
+        
+        <label>2. 設備 (Ivanti):</label>
+        <select id="val-device"><option value="pass">✅ 安全</option><option value="fail">❌ 危險</option></select>
+        
+        <label>3. 人事 (SailPoint):</label>
+        <select id="val-hr"><option value="pass">✅ 在職</option><option value="fail">❌ 離職</option></select>
+        
+        <button onclick="startSimulation()">🚀 發起登入請求</button>
+    </div>
+
+    <div id="log">系統待命...</div>
+
+<script>
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+    
+    function resetNodes() {
+        document.querySelectorAll('.node').forEach(n => n.className = 'node');
+    }
+
+    function logMsg(msg) {
+        const logBox = document.getElementById('log');
+        logBox.innerHTML += `\n> ${msg}`;
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    async function startSimulation() {
+        resetNodes();
+        document.getElementById('log').innerHTML = '開始新的登入請求...';
+
+        const c_cred = document.getElementById('val-cred').value;
+        const c_device = document.getElementById('val-device').value;
+        const c_hr = document.getElementById('val-hr').value;
+
+        // I(1)
+        await sleep(500);
+        document.getElementById('node-subject').classList.add('active');
+        document.getElementById('node-pep').classList.add('active');
+        logMsg('I(1): 員工向保鑣遞交帳號與密碼。');
+
+        // I(2)
+        await sleep(1500);
+        document.getElementById('node-subject').classList.remove('active');
+        document.getElementById('node-pdp').classList.add('active');
+        logMsg('I(2): 保鑣 (PEP) 不做決定，向總部大腦 (PDP) 請示。');
+
+        // I(3)
+        await sleep(1500);
+        document.getElementById('node-pip').classList.add('active');
+        logMsg('I(3): 大腦 (PDP) 呼叫情報員 (PIPs) 調閱身分與設備背景資料...');
+
+        // 判斷邏輯
+        await sleep(2000);
+        document.getElementById('node-pip').classList.remove('active');
+        
+        if (c_cred === 'pass' && c_device === 'pass' && c_hr === 'pass') {
+            // I(4) Allow
+            document.getElementById('node-pdp').classList.add('success');
+            document.getElementById('node-pep').classList.add('success');
+            logMsg('I(4): 情報全綠燈！大腦指令：准許放行 (Allow)。');
+            
+            // I(5) & R(1)
+            await sleep(1500);
+            document.getElementById('node-resource').classList.add('success');
+            logMsg('I(5): 保鑣開啟大門，員工成功連線至雲端資源！');
+        } else {
+            // I(4) Deny
+            document.getElementById('node-pdp').classList.add('denied');
+            document.getElementById('node-pep').classList.add('denied');
+            
+            let reason = [];
+            if(c_cred === 'fail') reason.push('密碼錯誤');
+            if(c_device === 'fail') reason.push('設備危險');
+            if(c_hr === 'fail') reason.push('員工已離職');
+            
+            logMsg(`I(4): 發現異常 (${reason.join(', ')})！大腦指令：拒絕 (Deny)。`);
+            logMsg('連線截斷：資源大門保持鎖定狀態。');
+        }
+    }
+</script>
+</body>
+</html>
